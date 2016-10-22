@@ -1,11 +1,17 @@
 
+
 /*******************************************************************************************************
 This code does the following:
-  1) Creates HBase table (if it does not already exist) 
-  2) Uses LoadIncrementalHFiles to BulkLoad from HDFS to HBase Table 
+  1) Creates an arbitrary RDD with 1 Million records and the following schema (Integer, String, Float).
+  2) Initializes an HBase configuration and job instance.
+  3) Save the RDD to Phoenix formatted HFiles.
+
+Usage:
+spark-submit --class com.github.zaratsian.SparkPhoenix.SparkPhoenixBulkLoad --jars /tmp/SparkHBaseExample-0.0.1-SNAPSHOT.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props
+
 ********************************************************************************************************/  
 
-package com.github.zaratsian.SparkHBase;
+package com.github.zaratsian.SparkPhoenix;
 
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.Row
@@ -48,93 +54,78 @@ import java.util.Date
 import java.util.Calendar
 import java.lang.String
 
-object SparkHBaseBulkLoad{
+object SparkPhoenixBulkLoad{
  
-  def main(args: Array[String]) {
+    def main(args: Array[String]) {
 
-    val start_time = Calendar.getInstance()
-    println("[ *** ] Start Time: " + start_time.getTime().toString)
+        val start_time = Calendar.getInstance()
+        println("[ *** ] Start Time: " + start_time.getTime().toString)
+        
+        val props = getProps(args(0))
+        
+        val sparkConf = new SparkConf().setAppName("SparkHBaseBulkLoad")
+        val sc = new SparkContext(sparkConf)
+        
+        val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+        import sqlContext.implicits._
+        
+        // Configure HBase output settings
+        val htable         = "sparkphoenixtable"
+        val hfile_location = "/tmp/sparkphoenixtable"
+        val conf           = HBaseConfiguration.create()
+            conf.set("zookeeper.znode.parent", "/hbase-unsecure")
+        
+        val job = Job.getInstance(hConf)
+            job.setMapOutputKeyClass(classOf[ImmutableBytesWritable])
+            job.setMapOutputValueClass(classOf[KeyValue])
+        
+        TableMapReduceUtil.initCredentials(job)
+        
+        val htable = new HTable(conf, htable)
+        
+        HFileOutputFormat2.configureIncrementalLoad(job, htable)
+        
+        // Create test RDD (1 million records)
+        val range = 1 to 1000000
+        val rdd   = sc.parallelize(range).map(x => List( x, "arbitrary_string_"+x.toString(), (x.toFloat()/1000000) ))
+        
+        //rdd.mapPartitions(PartitionSorter.sortPartition).saveAsNewAPIHadoopFile(
+        rdd.saveAsNewAPIHadoopFile(
+            hfile_location,
+            classOf[ImmutableBytesWritable],
+            classOf[Put],
+            classOf[HFileOutputFormat2],
+            conf)
+        
+        // Print Runtime Metric
+        val end_time = Calendar.getInstance()
+        println("[ *** ] End Time: " + end_time.getTime().toString)
+        println("[ *** ] Total Runtime: " + ((end_time.getTimeInMillis() - start_time.getTimeInMillis()).toFloat/1000).toString + " seconds")   
+        
+        
+        sc.stop()
     
-    val props = getProps(args(0))
     
-    val sparkConf = new SparkConf().setAppName("SparkHBaseBulkLoad")
-    val sc = new SparkContext(sparkConf)
-
-    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-    import sqlContext.implicits._
- 
-    // HBase table name (if it does not exist, it will be created) 
-    val hTableName   = "sparkhbasebulkload"
-    val columnFamily = "demographics" 
+    }  
     
-    println("[ *** ] Creating HBase Configuration")
-    val hConf = HBaseConfiguration.create()
-    hConf.set("zookeeper.znode.parent", "/hbase-unsecure")
-    hConf.set(TableInputFormat.INPUT_TABLE, hTableName)
-
-    //val job = new Job (hConf, "DumpHFile")
-    //job.setMapOutputKeyClass (classOf[ImmutableBytesWritable])
-    //job.setMapOutputValueClass (classOf[KeyValue])
     
-    val table = new HTable(hConf, hTableName)
-
-    // Create HBase Table
-    val admin = new HBaseAdmin(hConf)
-    if(!admin.isTableAvailable(hTableName)) {
-        println("[ ***] Creating HBase Table ( " + hTableName + " )")
-        val hTableDesc = new HTableDescriptor(hTableName)
-        hTableDesc.addFamily(new HColumnDescriptor(columnFamily.getBytes()))
-        admin.createTable(hTableDesc)
-    }else{
-        print("[ *** ] HBase Table ( " + hTableName + " ) already exists!!")
-        val columnDesc = new HColumnDescriptor(columnFamily.getBytes())
-	admin.disableTable(Bytes.toBytes(hTableName))
-        admin.addColumn(hTableName, columnDesc)
-	admin.enableTable(Bytes.toBytes(hTableName))
+    def convertScanToString(scan : Scan) = {
+        val proto = ProtobufUtil.toScan(scan);
+        Base64.encodeBytes(proto.toByteArray());
     }
-
-/*  Uncomment this for testing purposes
-    // Generating Test Data
-    println("[ *** ] Generating Test Data as an RDD")
-    val rdd = sc.parallelize(1 to 10)
-
-    println("[ *** ] Printing first 5 records of Spark RDD containing the HBase KeyValue structure")
-    rdd.take(5).foreach(x => println((x, (x, "cf","c1","value_xxx"))))
-
-    val rdd_out = rdd.map(x => {
-        val kv: KeyValue = new KeyValue(Bytes.toBytes(x), columnFamily.getBytes(), "c1".getBytes(), "value_xxx".getBytes() )
-        (new ImmutableBytesWritable(Bytes.toBytes(x)), kv)
-    })
-*/
-
-
-    println("[ *** ] BulkLoading from HDFS (HFileOutputFormat) to HBase Table (" + hTableName  + ")")
-    val bulkLoader = new LoadIncrementalHFiles(hConf)
-    bulkLoader.doBulkLoad(new Path("/tmp/" + hTableName), table)
-
-
-    sc.stop()
-
-
-    // Print Runtime Metric
-    val end_time = Calendar.getInstance()
-    println("[ *** ] End Time: " + end_time.getTime().toString)
-    println("[ *** ] Total Runtime: " + ((end_time.getTimeInMillis() - start_time.getTimeInMillis()).toFloat/1000).toString + " seconds")   
-
-  }  
-
-
-  def getArrayProp(props: => HashMap[String,String], prop: => String): Array[String] = {
-    return props.getOrElse(prop, "").split(",").filter(x => !x.equals(""))
-  }
-
-
-  def getProps(file: => String): HashMap[String,String] = {
-    var props = new HashMap[String,String]
-    val lines = fromFile(file).getLines
-    lines.foreach(x => if (x contains "=") props.put(x.split("=")(0), if (x.split("=").size > 1) x.split("=")(1) else null))
-    props
-  }
+    
+    
+    def getArrayProp(props: => HashMap[String,String], prop: => String): Array[String] = {
+        return props.getOrElse(prop, "").split(",").filter(x => !x.equals(""))
+    }
+    
+    
+    def getProps(file: => String): HashMap[String,String] = {
+        var props = new HashMap[String,String]
+        val lines = fromFile(file).getLines
+        lines.foreach(x => if (x contains "=") props.put(x.split("=")(0), if (x.split("=").size > 1) x.split("=")(1) else null))
+        props
+    }
 
 }
 
