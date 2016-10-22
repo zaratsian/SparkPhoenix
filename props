@@ -1,0 +1,27 @@
+##############################################################
+#
+# General Props
+#
+##############################################################
+hbase.rootdir=/apps/hbase/data
+hbase.zookeeper.quorum=localhost:2181:/hbase-unsecure
+hbase.snapshot.path=/user/hbase
+
+
+##############################################################
+#
+# Props for SparkReadHBaseSnapshot
+#
+##############################################################
+hbase.snapshot.name=hbase_simulated_50m_ss
+hbase.snapshot.versions=3
+datetime_threshold=2016-09-23 06:27:08:000
+
+
+##############################################################
+#
+# Props for SimulateAndBulkLoadHBaseData
+#
+##############################################################
+simulated_tablename=hbase_simulated_50m
+simulated_records=50000000
