@@ -70,18 +70,18 @@ object SparkPhoenixBulkLoad{
         import sqlContext.implicits._
         
         // Configure HBase output settings
-        val htable         = "sparkphoenixtable"
+        val htablename     = "sparkphoenixtable"
         val hfile_location = "/tmp/sparkphoenixtable"
-        val conf           = HBaseConfiguration.create()
-            conf.set("zookeeper.znode.parent", "/hbase-unsecure")
+        val hConf          = HBaseConfiguration.create()
+            hConf.set("zookeeper.znode.parent", "/hbase-unsecure")
         
-        val job = Job.getInstance(hConf)
+        val job: Job = Job.getInstance(hConf, "Phoenix bulk load")
             job.setMapOutputKeyClass(classOf[ImmutableBytesWritable])
             job.setMapOutputValueClass(classOf[KeyValue])
         
         TableMapReduceUtil.initCredentials(job)
         
-        val htable = new HTable(conf, htable)
+        val htable: HTable = new HTable(hConf, htablename)
         
         HFileOutputFormat2.configureIncrementalLoad(job, htable)
         
@@ -95,7 +95,7 @@ object SparkPhoenixBulkLoad{
             classOf[ImmutableBytesWritable],
             classOf[Put],
             classOf[HFileOutputFormat2],
-            conf)
+            hConf)
         
         // Print Runtime Metric
         val end_time = Calendar.getInstance()
