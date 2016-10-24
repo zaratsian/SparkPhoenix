@@ -71,7 +71,7 @@ object SparkPhoenixBulkLoad{
         val sc = new SparkContext(sparkConf)
 
         println("[ *** ] Simulating Data")
-        val rdd = sc.parallelize(1 to 1000)
+        val rdd = sc.parallelize(1 to number_of_simulated_records)
 
         println("[ *** ] Creating KeyValues")
         val rdd_out = rdd.map(x => {
@@ -79,7 +79,7 @@ object SparkPhoenixBulkLoad{
             (new ImmutableBytesWritable( Bytes.toBytes(x) ), kv)
         })
 
-        println("[ *** ] Printing simulated data (10 records)")
+        println("[ *** ] Printing simulated data (first 10 records)")
         rdd_out.map(x => x._2.toString).take(10).foreach(x => println(x))
 
         println("[ *** ] Setting up HBase Config")
