@@ -20,7 +20,6 @@ import org.apache.spark.sql.functions.avg
 import scala.collection.mutable.HashMap
 import scala.io.Source.fromFile
 import scala.collection.JavaConverters._
-import scala.reflect.ClassTag
 
 import org.apache.hadoop.hbase.client.Scan
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil
@@ -40,6 +39,7 @@ import org.apache.hadoop.hbase.KeyValue
 import org.apache.hadoop.hbase.mapred.TableOutputFormat
 import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles
+import org.apache.hadoop.hbase.mapreduce.KeyValueSortReducer
 import org.apache.hadoop.hbase.mapreduce.{HFileOutputFormat2, TableMapReduceUtil}
 
 import org.apache.hadoop.mapred.JobConf
@@ -55,6 +55,7 @@ import java.util.Arrays
 import java.util.Date
 import java.util.Calendar
 import java.lang.String
+import util.Random
 
 object SparkPhoenixBulkLoad{
  
@@ -62,57 +63,48 @@ object SparkPhoenixBulkLoad{
 
         val start_time = Calendar.getInstance()
         println("[ *** ] Start Time: " + start_time.getTime().toString)
-        
-        val props = getProps(args(0))
-        
-        val sparkConf = new SparkConf().setAppName("SparkPhoenix_Create_HFiles")
-        val sc = new SparkContext(sparkConf)
-        
-        val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-        import sqlContext.implicits._
-        
-        // Configure HBase output settings
-        println("[ *** ] Configuring HBase")
-        val htablename     = "sparkphoenixtable"
-        val hfile_location = "/tmp/sparkphoenixtable"
-        val hConf          = HBaseConfiguration.create()
-            hConf.set("zookeeper.znode.parent", "/hbase-unsecure")
-        
-        println("[ *** ] Get Job Instance")
-        val job: Job = Job.getInstance(hConf, "Phoenix bulkload")
-            job.setMapOutputKeyClass(classOf[ImmutableBytesWritable])
-            job.setMapOutputValueClass(classOf[KeyValue])
-        
-        TableMapReduceUtil.initCredentials(job)
-        
-        println("[ *** ] Creating HTable")
-        val htable: HTable = new HTable(hConf, htablename)
-        
-        println("[ *** ] Configuring Incremental Load")
-        HFileOutputFormat2.configureIncrementalLoad(job, htable)
-        
-        // Create test RDD (1 million records)
-        println("[ *** ] Creating arbitrary RDD with 1 million records and 3 fields [integer, string, float]")
-        val range = 1 to 1000000
 
-        val rdd_from_df = sc.parallelize(range).map(x => {
-            val kv: KeyValue = new KeyValue( Bytes.toBytes(x(0).asInstanceOf[Int]), x(1).toString.getBytes(), x(2).toString.getBytes(), x(3).asInstanceOf[Long], x(6).toString.getBytes() )
-            (new ImmutableBytesWritable( Bytes.toBytes(x(0).asInstanceOf[Int]) ), kv)
+        val props = getProps(args(0))
+        val number_of_simulated_records = 1000000
+
+        val sparkConf = new SparkConf().setAppName("SimulatedHBaseTable")
+        val sc = new SparkContext(sparkConf)
+
+        println("[ *** ] Simulating Data")
+        val rdd = sc.parallelize(1 to 1000)
+
+        println("[ *** ] Creating KeyValues")
+        val rdd_out = rdd.map(x => {
+            val kv: KeyValue = new KeyValue( Bytes.toBytes(x), "cf".getBytes(), "c1".getBytes(), x.toString.getBytes() )
+            (new ImmutableBytesWritable( Bytes.toBytes(x) ), kv)
         })
 
+        println("[ *** ] Printing simulated data (10 records)")
+        rdd_out.map(x => x._2.toString).take(10).foreach(x => println(x))
 
-        println("[ *** ] Printing first 5 records of RDD")
-        rdd.take(5).foreach(x=>println(x))
+        println("[ *** ] Setting up HBase Config")
+        val conf = HBaseConfiguration.create()
+        val job: Job = Job.getInstance(conf, "Phoenix bulk load")
 
-        //rdd.mapPartitions(PartitionSorter.sortPartition).saveAsNewAPIHadoopFile(
-        rdd.saveAsNewAPIHadoopFile(
-            hfile_location,
+        job.setMapOutputKeyClass(classOf[ImmutableBytesWritable])
+        job.setMapOutputValueClass(classOf[KeyValue])
+
+        TableMapReduceUtil.initCredentials(job)
+
+        val htable: HTable = new HTable(conf, "phoenixtable")
+
+        println("[ *** ] HFileOutputFormat2")
+        HFileOutputFormat2.configureIncrementalLoad(job, htable)
+
+        println("[ *** ] rdd_out.saveAsNewAPIHadoopFile")
+        rdd_out.saveAsNewAPIHadoopFile(
+            "/tmp/phoenix_files",
             classOf[ImmutableBytesWritable],
             classOf[Put],
             classOf[HFileOutputFormat2],
-            hConf)
-        
-        // Print Runtime Metric
+            conf)
+
+        // Print Runtime
         val end_time = Calendar.getInstance()
         println("[ *** ] End Time: " + end_time.getTime().toString)
         println("[ *** ] Total Runtime: " + ((end_time.getTimeInMillis() - start_time.getTimeInMillis()).toFloat/1000).toString + " seconds")   
