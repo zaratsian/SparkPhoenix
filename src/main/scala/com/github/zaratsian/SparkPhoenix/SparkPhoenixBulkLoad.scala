@@ -2,9 +2,9 @@
 /*******************************************************************************************************
 
 This code does the following:
-  1) Creates an arbitrary RDD with 1 Million records as KeyValue.
+  1) Creates an arbitrary RDD with 1 million records in KeyValue format.
   2) Initializes an HBase configuration and job instance.
-  3) Save the RDD to Phoenix formatted HFiles.
+  3) Saves the RDD as Phoenix formatted HFiles into HDFS.
 
 Usage:
 spark-submit --class com.github.zaratsian.SparkPhoenix.SparkPhoenixBulkLoad --jars /tmp/SparkPhoenix-0.0.1.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props
@@ -68,14 +68,15 @@ object SparkPhoenixBulkLoad{
         *   Parameters
         ****************************************************************/
         val props = getProps(args(0))
-        val number_of_simulated_records = 1000000
-        val htablename = "phoenixtable"
+        val records_to_simulate = props.getOrElse("records_to_simulate", "1000000").toInt
+        val htablename          = props.getOrElse("htablename", "phoenixtable")
+        val hfile_output        = props.getOrElse("hfile_output", "/tmp/phoenix_files")
 
-        val sparkConf = new SparkConf().setAppName("SimulatedHBaseTable")
+        val sparkConf = new SparkConf().setAppName("SparkPhoenixHFiles")
         val sc = new SparkContext(sparkConf)
 
-        println("[ *** ] Simulating Data")
-        val rdd = sc.parallelize(1 to number_of_simulated_records)
+        println("[ *** ] Simulating " + records_to_simulate.toString() + " records...")
+        val rdd = sc.parallelize(1 to records_to_simulate)
 
         println("[ *** ] Creating KeyValues")
         val rdd_out = rdd.map(x => {
@@ -83,12 +84,12 @@ object SparkPhoenixBulkLoad{
             (new ImmutableBytesWritable( Bytes.toBytes(x) ), kv)
         })
 
-        println("[ *** ] Printing simulated data (first 10 records)")
+        println("[ *** ] Printing simulated data (first 10 records): ")
         rdd_out.map(x => x._2.toString).take(10).foreach(x => println(x))
 
-        println("[ *** ] Setting up HBase Config")
+        println("[ *** ] Setting up HBase configuration")
         val conf = HBaseConfiguration.create()
-        val job: Job = Job.getInstance(conf, "Phoenix bulk load")
+        val job: Job = Job.getInstance(conf, "phoenixbulkload")
 
         job.setMapOutputKeyClass(classOf[ImmutableBytesWritable])
         job.setMapOutputValueClass(classOf[KeyValue])
@@ -97,12 +98,12 @@ object SparkPhoenixBulkLoad{
 
         val htable: HTable = new HTable(conf, htablename)
 
-        println("[ *** ] HFileOutputFormat2")
+        println("[ *** ] Setting up HFile Incremental Load")
         HFileOutputFormat2.configureIncrementalLoad(job, htable)
 
-        println("[ *** ] rdd_out.saveAsNewAPIHadoopFile")
+        println("[ *** ] Saving HFiles to HDFS ("+hfile_output.toString()+")")
         rdd_out.saveAsNewAPIHadoopFile(
-            "/tmp/phoenix_files2",
+            hfile_output,
             classOf[ImmutableBytesWritable],
             classOf[Put],
             classOf[HFileOutputFormat2],
