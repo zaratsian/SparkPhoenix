@@ -1,8 +1,8 @@
 
-
 /*******************************************************************************************************
+
 This code does the following:
-  1) Creates an arbitrary RDD with 1 Million records and the following schema (Integer, String, Float).
+  1) Creates an arbitrary RDD with 1 Million records as KeyValue.
   2) Initializes an HBase configuration and job instance.
   3) Save the RDD to Phoenix formatted HFiles.
 
@@ -64,8 +64,12 @@ object SparkPhoenixBulkLoad{
         val start_time = Calendar.getInstance()
         println("[ *** ] Start Time: " + start_time.getTime().toString)
 
+        /***************************************************************
+        *   Parameters
+        ****************************************************************/
         val props = getProps(args(0))
         val number_of_simulated_records = 1000000
+        val htablename = "phoenixtable"
 
         val sparkConf = new SparkConf().setAppName("SimulatedHBaseTable")
         val sc = new SparkContext(sparkConf)
@@ -91,14 +95,14 @@ object SparkPhoenixBulkLoad{
 
         TableMapReduceUtil.initCredentials(job)
 
-        val htable: HTable = new HTable(conf, "phoenixtable")
+        val htable: HTable = new HTable(conf, htablename)
 
         println("[ *** ] HFileOutputFormat2")
         HFileOutputFormat2.configureIncrementalLoad(job, htable)
 
         println("[ *** ] rdd_out.saveAsNewAPIHadoopFile")
         rdd_out.saveAsNewAPIHadoopFile(
-            "/tmp/phoenix_files",
+            "/tmp/phoenix_files2",
             classOf[ImmutableBytesWritable],
             classOf[Put],
             classOf[HFileOutputFormat2],
