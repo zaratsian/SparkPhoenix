@@ -5,7 +5,7 @@
 <br>The goal is to use Apache Phoenix to speed up bulkloading time, compared to HBase Bulkloading (as I've demonstrated in this repo: https://github.com/zaratsian/SparkHBaseExample
 <br>
 <br>To BulkLoad HFiles (saved in HDFS) into an HBase table:
-```hbase org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles path/to/hfile tableName```
+<br>```hbase org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles path/to/hfile tableName```
 <br>
 <br>Links:
 <br><a href="https://phoenix.apache.org/bulk_dataload.html">Phoenix - Bulk CSV Data Loading</a>
