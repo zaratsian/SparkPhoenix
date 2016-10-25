@@ -9,7 +9,7 @@
 *   /usr/hdp/current/phoenix-client/bin/sqlline.py localhost:2181:/hbase-unsecure /tmp/create_table.sql
 *
 *   Usage:
-*   spark-submit --class com.github.zaratsian.SparkPhoenix.SparkPhoenixBulkSave --jars /tmp/SparkPhoenix-0.0.1.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props
+*   spark-submit --class com.github.zaratsian.SparkPhoenix.SparkPhoenixSave --jars /tmp/SparkPhoenix-0.0.1.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props
 *
 ************************************************************************************************************************/
 
