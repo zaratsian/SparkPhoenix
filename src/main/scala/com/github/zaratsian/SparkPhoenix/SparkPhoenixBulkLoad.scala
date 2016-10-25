@@ -4,7 +4,8 @@
 This code does the following:
   1) Creates an arbitrary RDD with 1 million records in KeyValue format.
   2) Initializes an HBase configuration and job instance.
-  3) Saves the RDD as Phoenix formatted HFiles into HDFS.
+  3) Creates empty HBase Table if it does not exist.
+  4) Saves the RDD as Phoenix formatted HFiles into HDFS.
 
 Usage:
 spark-submit --class com.github.zaratsian.SparkPhoenix.SparkPhoenixBulkLoad --jars /tmp/SparkPhoenix-0.0.1.jar /usr/hdp/current/phoenix-client/phoenix-client.jar /tmp/props
@@ -70,11 +71,37 @@ object SparkPhoenixBulkLoad{
         val props = getProps(args(0))
         val records_to_simulate = props.getOrElse("records_to_simulate", "1000000").toInt
         val htablename          = props.getOrElse("htablename", "phoenixtable")
+        val columnfamily        = props.getOrElse("columnfamily", "cf")
         val hfile_output        = props.getOrElse("hfile_output", "/tmp/phoenix_files")
 
         val sparkConf = new SparkConf().setAppName("SparkPhoenixHFiles")
         val sc = new SparkContext(sparkConf)
 
+        /***************************************************************
+        *   Create HBase Table if it does not exist
+        ****************************************************************/
+        println("[ *** ] Creating HBase Configuration")
+        val hConf = HBaseConfiguration.create()
+        hConf.set("zookeeper.znode.parent", "/hbase-unsecure")
+        hConf.set(TableInputFormat.INPUT_TABLE, htablename)
+
+        val table = new HTable(hConf, htablename)
+
+        val admin = new HBaseAdmin(hConf)
+
+        if(!admin.isTableAvailable(htablename)) {
+            println("[ ***] Creating HBase Table (" + htablename + ")")
+            val hTableDesc = new HTableDescriptor(htablename)
+            hTableDesc.addFamily(new HColumnDescriptor(columnfamily.getBytes()))
+            admin.createTable(hTableDesc)
+        }else{
+            println("[ *** ] HBase Table ( " + htablename + " ) already exists!")
+        }
+
+
+        /***************************************************************
+        *   Simulate Data
+        ****************************************************************/
         println("[ *** ] Simulating " + records_to_simulate.toString() + " records...")
         val rdd = sc.parallelize(1 to records_to_simulate)
 
@@ -87,6 +114,9 @@ object SparkPhoenixBulkLoad{
         println("[ *** ] Printing simulated data (first 10 records): ")
         rdd_out.map(x => x._2.toString).take(10).foreach(x => println(x))
 
+        /***************************************************************
+        *   Write to HFiles
+        ****************************************************************/
         println("[ *** ] Setting up HBase configuration")
         val conf = HBaseConfiguration.create()
         val job: Job = Job.getInstance(conf, "phoenixbulkload")
