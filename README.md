@@ -1,6 +1,6 @@
 <h3>Spark to Phoenix (HBase) Example</h3>
 
-<br>This repo contains code to bulkload data from Spark to HBase (via Phoenix).
+<br>This repo contains Spark code that will bulkload data from Spark into HBase (via Phoenix). I've also included Spark code (SparkPhoenixSave.scala) to Save a DataFrame directly to HBase, via Phoenix. Similarly, there is code (SparkPhoenixLoad.scala) that'll load data from HBase, via Phoenix, into a Spark dataframe.
 <br>
 <br>The goal is to use Apache Phoenix to speed up bulkloading time, compared to HBase Bulkloading (as I've demonstrated in this repo: https://github.com/zaratsian/SparkHBaseExample
 <br>
