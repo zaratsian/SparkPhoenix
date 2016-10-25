@@ -1,11 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <name>SparkHBaseExample</name>
+  <name>SparkPhoenix</name>
   <packaging>jar</packaging>
 
   <groupId>com.github.zaratsian</groupId>
-  <artifactId>SparkHBaseExample</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <artifactId>SparkPhoenix</artifactId>
+  <version>0.0.1</version>
 
   <properties>
     <hdp.version>2.5.0.0-1245</hdp.version>
@@ -83,7 +83,14 @@
       <scope>provided</scope>
     </dependency>
 
-
+    <dependency>
+      <groupId>org.apache.phoenix</groupId>
+      <artifactId>phoenix-spark</artifactId>
+      <version>${phoenix.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    
+    
     <!--
     Spark provides hadoop-hdfs classes, so need to force
     exclusion from the build by scoping them "provided"
@@ -166,7 +173,7 @@
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>com.github.zaratsian.SparkHBase.SparkHBase</mainClass>
+                  <mainClass>com.github.zaratsian.SparkPhoenix.SparkPhoenix</mainClass>
                 </transformer>
               </transformers>
             </configuration>
