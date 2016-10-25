@@ -13,7 +13,7 @@
 #/usr/hdp/current/phoenix-client/bin/sqlline.py localhost:2181:/hbase-unsecure /tmp/create_table.sql
 
 
-#Startup Spark Shell
+#Start Spark Shell
 #spark-shell --master yarn-client --jars /usr/hdp/current/phoenix-client/phoenix-client.jar /usr/hdp/current/phoenix-client/lib/phoenix-spark-4.7.0.2.5.0.0-1245.jar --conf "spark.executor.extraClassPath=/usr/hdp/current/phoenix-client/phoenix-client.jar"
 
 
