@@ -7,11 +7,13 @@
 #########################################################################################################################
 
 
-echo "CREATE TABLE OUTPUT_TABLE (id BIGINT NOT NULL PRIMARY KEY, col1 VARCHAR, col2 INTEGER);" > /tmp/create_table.sql
-/usr/hdp/current/phoenix-client/bin/sqlline.py localhost:2181:/hbase-unsecure /tmp/create_table.sql
+#Use Phoenix to create HBase table called OUTPUT_TABLE
+#echo "CREATE TABLE OUTPUT_TABLE (id BIGINT NOT NULL PRIMARY KEY, col1 VARCHAR, col2 INTEGER);" > /tmp/create_table.sql
+#/usr/hdp/current/phoenix-client/bin/sqlline.py localhost:2181:/hbase-unsecure /tmp/create_table.sql
 
 
-spark-shell --master yarn-client --jars /usr/hdp/current/phoenix-client/phoenix-client.jar /usr/hdp/current/phoenix-client/lib/phoenix-spark-4.7.0.2.5.0.0-1245.jar --conf "spark.executor.extraClassPath=/usr/hdp/current/phoenix-client/phoenix-client.jar"
+#Start Spark Shell
+#spark-shell --master yarn-client --jars /usr/hdp/current/phoenix-client/phoenix-client.jar /usr/hdp/current/phoenix-client/lib/phoenix-spark-4.7.0.2.5.0.0-1245.jar --conf "spark.executor.extraClassPath=/usr/hdp/current/phoenix-client/phoenix-client.jar"
 
 
 import org.apache.spark.SparkContext
