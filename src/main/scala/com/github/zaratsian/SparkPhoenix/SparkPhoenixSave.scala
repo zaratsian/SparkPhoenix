@@ -25,7 +25,8 @@ object SparkPhoenixSave {
   
         val sparkConf = new SparkConf().setAppName("SparkPhoenixSave")
         val sc = new SparkContext(sparkConf)
-        val sqlContext = new SQLContext(sc)
+        val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+        import sqlContext.implicits._
 
         val rdd = List((1L, "1", 1), (2L, "2", 2), (3L, "3", 3))
         val df = rdd.toDF("id","col1","col2")
